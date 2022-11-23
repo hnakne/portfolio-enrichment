@@ -20,7 +20,7 @@ def parse_portfolio_list_element(list_element: BeautifulSoup):
         fund_elem = value_by_text_key(list_element, 'Fund')
         entry_elem = value_by_text_key(list_element, 'Entry')
         exit_elem = value_by_text_key(list_element, 'Exit')
-        if name: r['name'] = name
+        if name: r['name'] = name.text
         if country_elem: r['country'] = country_elem.text
         if sector_elem: r['sector'] = sector_elem.text
         if entry_elem: r['entry'] = entry_elem.text

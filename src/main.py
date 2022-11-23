@@ -1,4 +1,5 @@
 import datetime
+import json
 import os.path
 
 from bs4 import BeautifulSoup
@@ -56,6 +57,13 @@ def check_and_print_metrics(items: list, url: str):
     print(f'# of parsed lines: {len(valid_elems)}')
 
 
+def save_to_json(output_file_name: str, l: list):
+    with open(output_file_name, 'w') as f:
+        for d in l:
+            json.dump(d, f)
+    f.close()
+
+
 if __name__ == '__main__':
     driver = get_chrome_driver()
 
@@ -72,3 +80,6 @@ if __name__ == '__main__':
 
     divestment_items = parse_portfolio(divestments)
     check_and_print_metrics(divestment_items, CURRENT_PORTFOLIO_DIVESTMENTS_URL)
+
+
+    save_to_json('output.json', portfolio_items + divestment_items)
