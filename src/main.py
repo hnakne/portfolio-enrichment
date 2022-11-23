@@ -1,11 +1,21 @@
+import datetime
+import os.path
+
 from bs4 import BeautifulSoup
 from selenium import webdriver
 from selenium.webdriver.chrome.options import Options
 from selenium.webdriver.chrome.webdriver import WebDriver
 
+from src.portfolio_parsing import parse_portfolio
+
+DIVESTMENTS_HTML_FILE_NAME = 'current_portfolio_divestments.html'
+
+CURRENT_PORTFOLIO_HTML_FILE_NAME = 'current_portfolio.html'
+
 CURRENT_PORTFOLIO_FUNDS_URL = 'https://eqtgroup.com/current-portfolio/funds'
 
 CURRENT_PORTFOLIO_URL = 'https://eqtgroup.com/current-portfolio'
+CURRENT_PORTFOLIO_DIVESTMENTS_URL = 'https://eqtgroup.com/current-portfolio/divestments'
 
 drivers = []
 
@@ -20,84 +30,45 @@ def get_chrome_driver() -> WebDriver:
     return d
 
 
-def get_page_source(web_driver: WebDriver, url: str) -> BeautifulSoup:
+def get_page_source(web_driver: WebDriver, url: str, file_name=None) -> str:
+    if file_name and os.path.exists(file_name):
+        with open(file_name, 'r') as f:
+            r = f.read()
+            f.close()
+            return r
     web_driver.get(url)
-    return web_driver.page_source
+    page_source = web_driver.page_source
+    with open(file_name, 'w') as f:
+        f.write(page_source)
+        f.close()
+    return page_source
 
 
 def soup_from_string(page_source: str) -> BeautifulSoup:
     return BeautifulSoup(page_source, "html.parser")
 
 
-def save_to_file(filename: str, content: str, ):
-    f = open(filename, 'w')
-    f.write(content)
-    f.close()
-
-
-def parse_portfolio_list_element(list_element: BeautifulSoup):
-    r = {
-            'raw_html': str(list_element)
-    }
-    try:
-        name = list_element.find('span', class_='inline-block')
-        country = value_by_text_key(list_element, 'Country')
-        sector_elem = value_by_text_key(list_element, 'Sector')
-        fund_elem = value_by_text_key(list_element, 'Fund')
-        entry_elem = value_by_text_key(list_element, 'Entry')
-        r['name'] = name
-        r['country'] = country.text
-        r['sector'] = sector_elem.text
-        r['entry'] = entry_elem.text
-        r['fund'] = fund_elem.text
-
-        hyperlink = fund_elem.find('a')
-        if hyperlink:
-            fund_link = hyperlink['href']
-            r['fund_link'] = fund_link
-    except Exception as e:
-        r['parse_error'] = str(e)
-
-    return r
-
-
-def value_by_text_key(li_element: BeautifulSoup, text: str):
-    return list(li_element.find_all('span', text=text)[0].parent.children)[1]
-
-
-def parse_portfolio(portfolio_soup: BeautifulSoup) -> list:
-    items_in_portfolio = portfolio_soup \
-        .find("div", class_="order-last") \
-        .find("ul") \
-        .find_all("li", class_="flex", recursive=False)
-
-    portfolio_items = list(map(lambda i: parse_portfolio_list_element(i), list(items_in_portfolio)))
-    # for name in elems:
-    #     print(name)
-    errors = filter(lambda e: 'parse_error' in e, portfolio_items)
-    print(f'Found {len(items_in_portfolio)} portfolio items on {CURRENT_PORTFOLIO_URL}')
+def check_and_print_metrics(items: list, url: str):
+    print(f'URL: {url}')
+    errors = filter(lambda e: 'parse_error' in e, items)
     print(f'# of unparsable lines: {len(list(errors))}')
-    valid_elems = list(filter(lambda e: 'parse_error' not in e, portfolio_items))
+    valid_elems = list(filter(lambda e: 'parse_error' not in e, items))
     print(f'# of parsed lines: {len(valid_elems)}')
-    return portfolio_items
 
 
 if __name__ == '__main__':
     driver = get_chrome_driver()
-    # portfolio_url = CURRENT_PORTFOLIO_URL
-    # funds_page = CURRENT_PORTFOLIO_FUNDS_URL
 
-    porfolio_source = get_page_source(driver, CURRENT_PORTFOLIO_URL)
-    save_to_file('current_portfolio.html', porfolio_source)
-    portfolio = soup_from_string(porfolio_source)
-    out = parse_portfolio(portfolio)
+    portfolio_source = get_page_source(driver, CURRENT_PORTFOLIO_URL, CURRENT_PORTFOLIO_HTML_FILE_NAME)
+    portfolio = soup_from_string(portfolio_source)
 
-    funds_source = get_page_source(driver, CURRENT_PORTFOLIO_FUNDS_URL)
-    save_to_file('current_portfolio_funds.html', funds_source)
-    # //*[@id="content"]/div[2]/div/div
-    # /html/body/div[1]/div[1]/div[6]/div[2]/div[2]/div/div
+    portfolio_divestments_source = get_page_source(driver, CURRENT_PORTFOLIO_DIVESTMENTS_URL,
+                                                   DIVESTMENTS_HTML_FILE_NAME)
+    divestments = soup_from_string(portfolio_divestments_source)
 
-    funds = soup_from_string(funds_source)
+    now = datetime.datetime.now()
+    portfolio_items = parse_portfolio(portfolio)
+    check_and_print_metrics(portfolio_items, CURRENT_PORTFOLIO_URL)
 
-    # for page in pages:
-    #     html = get_page_html(get_chrome_driver, )
+    divestment_items = parse_portfolio(divestments)
+    check_and_print_metrics(divestment_items, CURRENT_PORTFOLIO_DIVESTMENTS_URL)
