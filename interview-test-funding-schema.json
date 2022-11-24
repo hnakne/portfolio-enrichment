@@ -1,1 +1,38 @@
-{"$schema": "http://json-schema.org/schema#", "type": "object", "properties": {"funding_round_uuid": {"type": "string"}, "company_uuid": {"type": "string"}, "company_name": {"type": "string"}, "investment_type": {"type": "string"}, "announced_on": {"type": "string"}, "raised_amount_usd": {"type": "string"}, "investor_names": {"type": "string"}, "investor_count": {"type": "string"}}, "required": ["announced_on", "company_name", "company_uuid", "funding_round_uuid", "investment_type", "investor_names"]}
+{
+  "$schema": "http://json-schema.org/schema#",
+  "type": "object",
+  "properties": {
+    "funding_round_uuid": {
+      "type": "string"
+    },
+    "company_uuid": {
+      "type": "string"
+    },
+    "company_name": {
+      "type": "string"
+    },
+    "investment_type": {
+      "type": "string"
+    },
+    "announced_on": {
+      "type": "string"
+    },
+    "raised_amount_usd": {
+      "type": "string"
+    },
+    "investor_names": {
+      "type": "string"
+    },
+    "investor_count": {
+      "type": "string"
+    }
+  },
+  "required": [
+    "announced_on",
+    "company_name",
+    "company_uuid",
+    "funding_round_uuid",
+    "investment_type",
+    "investor_names"
+  ]
+}

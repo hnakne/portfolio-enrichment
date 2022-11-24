@@ -1,4 +1,7 @@
+import datetime
 import sys
+import time
+
 import pandas as pd
 
 import argparse
@@ -24,14 +27,13 @@ arg_parser.add_argument(
 )
 
 
-#
-# def normalize(name: str):
-#     stripped = re.sub('[^a-zA-Z0-9 ]+', '', name)
-#     lower = name.lower()
-#     lower.strip()
+def normalize(company_name: str):
+    stripped = re.sub('[^a-zA-Z0-9 ]+', '', company_name)
+    lower = stripped.lower()
+    return lower
 
 
-class Portfolio():
+class Company():
     @staticmethod
     def columns_of_interest() -> list:
         return [
@@ -57,26 +59,45 @@ def process(
         organisation: DataFrame,
         funding: DataFrame
 ):
-    print(f'portf: {portfolio.columns.values.tolist()}')
-    print(f'portf: {portfolio.shape[0]}')
-
-    print(f'divestments {divestments.columns.values.tolist()}')
-    print(f'divestments {divestments.shape[0]}')
     companies = pd.concat([portfolio, divestments])
-    print(f'companies {companies.columns.values.tolist()}')
+    companies['normalized_company_name'] = companies['title'].apply(
+            lambda company_name: normalize(company_name)).astype(str)
+    organisation['normalized_company_name'] = organisation['company_name'].apply(
+            lambda company_name: normalize(company_name)).astype(str)
+    companies_with_org_data = companies.merge(organisation, how='left', on='normalized_company_name',
+                                              suffixes=('_c', '_o'))
+    companies_with_org_data.rename(columns={'uuid': 'company_uuid'}, inplace=True)
+
+    fundings_by_company_id = funding.groupby('company_uuid').apply(list).reset_index().rename(columns={1: 'fundings'})
+
+    companies_with_org_data_and_funding = companies_with_org_data.merge(fundings_by_company_id, how='left',
+                                                                        left_on='company_uuid', right_on='company_uuid')
+
+    print(companies.info(verbose=True, max_cols=20))
+    print(organisation.info(verbose=True, max_cols=20))
+    print(companies_with_org_data.info(verbose=True, max_cols=20))
+    print(fundings_by_company_id.info(verbose=True, max_cols=20))
+    print(companies_with_org_data_and_funding.info(verbose=True, max_cols=20))
+
+    print('summary:')
     print(f'companies {companies.shape[0]}')
-    companies_flat = Portfolio.flatten(companies)
-    return companies_flat
+    print(f'organisation {organisation.shape[0]}')
+    print(f'companies_with_org_data {companies_with_org_data.shape[0]}')
+    print(f'companies_with_org_data_and_funding {companies_with_org_data_and_funding.shape[0]}')
+    return companies_with_org_data_and_funding
 
 
 def main(args):
+    date = datetime.date.today()
     portfolio = pd.read_json(args.portfolio, lines=True)
     divestments = pd.read_json(args.divestments, lines=True)
 
-    organisation = None  # pd.read_json(args.organisation, lines=True, compression='gzip')
+    organisation = pd.read_json(args.organisation, lines=True, compression='gzip')
 
-    funding = None  # pd.read_json(args.funding, lines=True, compression='gzip')
-    process(portfolio=portfolio, divestments=divestments, organisation=organisation, funding=funding)
+    funding = pd.read_json(args.funding, lines=True, compression='gzip')
+    output = process(portfolio=portfolio, divestments=divestments, organisation=organisation, funding=funding)
+    print(output.head())
+    output.to_json()
 
 
 if __name__ == '__main__':

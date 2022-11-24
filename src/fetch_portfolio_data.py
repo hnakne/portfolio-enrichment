@@ -6,6 +6,8 @@ from pathlib import Path
 
 import requests
 
+from src.utils import build_dir_path
+
 EQT_DOMAIN = 'https://eqtgroup.com'
 EQT_PAGE_DATA = 'https://eqtgroup.com/page-data'
 PAGE_DATA_JSON = 'page-data.json'
@@ -29,14 +31,6 @@ def save_as_json_per_item(dir: str, output_file_name: str, items: list):
             json.dump(d, f)
             f.write('\n')
         f.close()
-
-
-def build_dir_path(data_name, date: datetime.date):
-    return f'output/{data_name}/{date}'
-
-
-def to_string(dt: datetime.date):
-    return dt.isoformat()
 
 
 # basic sanity checks
@@ -72,12 +66,12 @@ def items_from_company_page_page_data(j: dict):
     return items
 
 
-def enrich(items: list, source_url: str, lookup_by_path: dict, date_str: str):
+def enrich(items: list, source_url: str, company_details_by_path: dict, date_str: str):
     for item in items:
         item['source_url'] = source_url
         item['date'] = date_str
-        if 'path' in item and item['path'] in lookup_by_path:
-            item['company_details'] = lookup_by_path[item['path']]
+        if 'path' in item and item['path'] in company_details_by_path:
+            item['company_details'] = company_details_by_path[item['path']]
     return items
 
 
@@ -105,7 +99,7 @@ def extract_path(item):
 
 
 def lookup_urls(paths):
-    paths = set(paths)
+    paths = set(paths)  # don't lookup twice
     r = {}
     for path in paths:
         full_url = build_page_data_from_path(path)
@@ -118,8 +112,8 @@ def process(page_data_response: dict, url: str, date: datetime.date) -> (dict, l
     items = items_from_portfolio_page_data(page_data_response)
     paths = list(filter(lambda p: p is not None, map(lambda i: extract_path(i), items)))
     company_page_info_by_path = lookup_urls(paths)
-    enriched_items = enrich(items=items, source_url=url, lookup_by_path=company_page_info_by_path,
-                            date_str=to_string(date))
+    enriched_items = enrich(items=items, source_url=url, company_details_by_path=company_page_info_by_path,
+                            date_str=date.isoformat())
     return enriched_items
 
 
@@ -129,21 +123,27 @@ def save(data_source_name: str, items: list, date: datetime.date):
     save_as_json_per_item(dir=directory, output_file_name='output.json', items=items)
 
 
+def save_blob(data_source_name: str, blob: list, date: datetime.date):
+    directory = build_dir_path(data_source_name, date)
+    save_as_json(dir=directory, output_file_name='output.json', json_blob=blob)
+
+
 def main(args):
     today = datetime.date.today()
-    if 'portfolio' in args:
+    if 'portfolio' in args or len(args) == 0:
         portfolio_data = curl_and_get(portfolio_page_data_url)
+
         enriched_portfolio_items = process(portfolio_data, portfolio_page_data_url, date=today)
         print_basic_metrics(enriched_portfolio_items, portfolio_page_data_url)
         save('portfolio', enriched_portfolio_items, today)
 
-    if 'divestments' in args:
+    if 'divestments' in args or len(args) == 0:
         divestments_data = curl_and_get(divestments_page_data_url)
         enriched_divestment_items = process(divestments_data, divestments_page_data_url, date=today)
         print_basic_metrics(enriched_divestment_items, divestments_page_data_url)
         save('divestments', enriched_divestment_items, today)
 
-    # todo - add funds
+    # TODO - parse funds
     # if 'funds' in args:
     #     funds_data = curl_and_get(funds_page_data_url)
 

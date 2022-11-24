@@ -1,1 +1,53 @@
-{"$schema": "http://json-schema.org/schema#", "type": "object", "properties": {"uuid": {"type": "string"}, "company_name": {"type": "string"}, "homepage_url": {"type": "string"}, "country_code": {"type": "string"}, "city": {"type": "string"}, "founded_on": {"type": "string"}, "short_description": {"type": "string"}, "description": {"type": "string"}, "funding_rounds": {"type": "string"}, "funding_total_usd": {"type": "string"}, "employee_count": {"type": "string"}, "last_funding_on": {"type": "string"}}, "required": ["city", "company_name", "country_code", "employee_count", "funding_rounds", "funding_total_usd", "homepage_url", "short_description", "uuid"]}
+{
+  "$schema": "http://json-schema.org/schema#",
+  "type": "object",
+  "properties": {
+    "uuid": {
+      "type": "string"
+    },
+    "company_name": {
+      "type": "string"
+    },
+    "homepage_url": {
+      "type": "string"
+    },
+    "country_code": {
+      "type": "string"
+    },
+    "city": {
+      "type": "string"
+    },
+    "founded_on": {
+      "type": "string"
+    },
+    "short_description": {
+      "type": "string"
+    },
+    "description": {
+      "type": "string"
+    },
+    "funding_rounds": {
+      "type": "string"
+    },
+    "funding_total_usd": {
+      "type": "string"
+    },
+    "employee_count": {
+      "type": "string"
+    },
+    "last_funding_on": {
+      "type": "string"
+    }
+  },
+  "required": [
+    "city",
+    "company_name",
+    "country_code",
+    "employee_count",
+    "funding_rounds",
+    "funding_total_usd",
+    "homepage_url",
+    "short_description",
+    "uuid"
+  ]
+}
