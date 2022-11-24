@@ -1,5 +1,6 @@
 import datetime
 import json
+import sys
 import time
 from pathlib import Path
 
@@ -11,16 +12,17 @@ PAGE_DATA_JSON = 'page-data.json'
 
 divestments_page_data_url = 'https://eqtgroup.com/page-data/current-portfolio/divestments/page-data.json'
 portfolio_page_data_url = 'https://eqtgroup.com/page-data/current-portfolio/page-data.json'
+funds_page_data_url = 'https://eqtgroup.com/page-data/current-portfolio/funds/page-data.json'
 
 
-def save_to_json(dir: str, output_file_name: str, blob: dict):
+def save_as_json(dir: str, output_file_name: str, json_blob: dict):
     Path(dir).mkdir(parents=True, exist_ok=True)
     with open(f'{dir}/{output_file_name}', 'w') as f:
-        json.dump(blob, f)
+        json.dump(json_blob, f)
         f.close()
 
 
-def save_to_json_by_item(dir: str, output_file_name: str, items: list):
+def save_as_json_per_item(dir: str, output_file_name: str, items: list):
     Path(dir).mkdir(parents=True, exist_ok=True)
     with open(f'{dir}/{output_file_name}', 'w') as f:
         for d in items:
@@ -49,23 +51,33 @@ def print_basic_metrics(items, url):
     print(f'total {len(valid_items)} valid')
 
 
+def get_active_funds(j: dict):
+    active_funds = j['result']['data']['activeFunds']['nodes']
+    return active_funds
+
+
+def get_realised_funds(j: dict):
+    active_funds = j['result']['data']['realizedFunds']['nodes']
+    return active_funds
+
+
 # same structure
-def items_from_page_data(j: dict):
+def items_from_portfolio_page_data(j: dict):
     items = j['result']['data']['allSanityCompanyPage']['nodes']
     return items
 
 
-def items_from_company_page(j: dict):
+def items_from_company_page_page_data(j: dict):
     items = j['result']['data']['sanityCompanyPage']
     return items
 
 
-def enrich(items: list, source_url: str, blob_lookup: dict, date_str: str):
+def enrich(items: list, source_url: str, lookup_by_path: dict, date_str: str):
     for item in items:
         item['source_url'] = source_url
         item['date'] = date_str
-        if 'path' in item and item['path'] in blob_lookup:
-            item['company_details'] = blob_lookup[item['path']]
+        if 'path' in item and item['path'] in lookup_by_path:
+            item['company_details'] = lookup_by_path[item['path']]
     return items
 
 
@@ -98,37 +110,44 @@ def lookup_urls(paths):
     for path in paths:
         full_url = build_page_data_from_path(path)
         blob = curl_and_get(full_url)
-        r[path] = items_from_company_page(blob)
+        r[path] = items_from_company_page_page_data(blob)
     return r
 
 
 def process(page_data_response: dict, url: str, date: datetime.date) -> (dict, list):
-    items = items_from_page_data(page_data_response)
+    items = items_from_portfolio_page_data(page_data_response)
     paths = list(filter(lambda p: p is not None, map(lambda i: extract_path(i), items)))
-    blob_by_path = lookup_urls(paths)
-    enriched_items = enrich(items=items, source_url=url, blob_lookup=blob_by_path, date_str=to_string(date))
+    company_page_info_by_path = lookup_urls(paths)
+    enriched_items = enrich(items=items, source_url=url, lookup_by_path=company_page_info_by_path,
+                            date_str=to_string(date))
     return enriched_items
 
 
 # todo - add checks if data is already written. Handle with Override/backfill flag.
 def save(data_source_name: str, items: list, date: datetime.date):
     directory = build_dir_path(data_source_name, date)
-    save_to_json_by_item(dir=directory, output_file_name='output.json', items=items)
+    save_as_json_per_item(dir=directory, output_file_name='output.json', items=items)
 
 
-def main_curl():
+def main(args):
     today = datetime.date.today()
-    # separate from divestments
-    portfolio_data = curl_and_get(portfolio_page_data_url)
-    enriched_portfolio_items = process(portfolio_data, portfolio_page_data_url, date=today)
-    print_basic_metrics(enriched_portfolio_items, portfolio_page_data_url)
-    save('portfolio', enriched_portfolio_items, today)
+    if 'portfolio' in args:
+        portfolio_data = curl_and_get(portfolio_page_data_url)
+        enriched_portfolio_items = process(portfolio_data, portfolio_page_data_url, date=today)
+        print_basic_metrics(enriched_portfolio_items, portfolio_page_data_url)
+        save('portfolio', enriched_portfolio_items, today)
 
-    divestments_data = curl_and_get(divestments_page_data_url)
-    enriched_divestment_items = process(divestments_data, divestments_page_data_url, date=today)
-    print_basic_metrics(enriched_divestment_items, divestments_page_data_url)
-    save('divestments', enriched_divestment_items, today)
+    if 'divestments' in args:
+        divestments_data = curl_and_get(divestments_page_data_url)
+        enriched_divestment_items = process(divestments_data, divestments_page_data_url, date=today)
+        print_basic_metrics(enriched_divestment_items, divestments_page_data_url)
+        save('divestments', enriched_divestment_items, today)
+
+    # todo - add funds
+    # if 'funds' in args:
+    #     funds_data = curl_and_get(funds_page_data_url)
 
 
 if __name__ == '__main__':
-    main_curl()
+    args = sys.argv[1:]
+    main(args)

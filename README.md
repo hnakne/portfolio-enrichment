@@ -6,6 +6,11 @@ gsutil cp gs://motherbrain-external-test/interview-test-org.json.gz  reference-d
 gsutil cp gs://motherbrain-external-test/interview-test-funding.json.gz reference-data/
 ```
 
+
+```shell
+python src/combine_sources.py --divestments output/divestments/2022-11-24/output.json --portfolio output/portfolio/2022-11-24/output.json  --organisation reference-data/interview-test-org.json.gz --funding reference-data/interview-test-funding.json.gz 
+```
+
 interview-test-org.json
 ```json
 {
