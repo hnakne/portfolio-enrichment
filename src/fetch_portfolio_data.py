@@ -6,9 +6,8 @@ from pathlib import Path
 
 import requests
 
-from src.utils import build_dir_path
+from src.utils import build_dir_path, make_dir_if_not_exists
 
-EQT_DOMAIN = 'https://eqtgroup.com'
 EQT_PAGE_DATA = 'https://eqtgroup.com/page-data'
 PAGE_DATA_JSON = 'page-data.json'
 
@@ -17,16 +16,16 @@ portfolio_page_data_url = 'https://eqtgroup.com/page-data/current-portfolio/page
 funds_page_data_url = 'https://eqtgroup.com/page-data/current-portfolio/funds/page-data.json'
 
 
-def save_as_json(dir: str, output_file_name: str, json_blob: dict):
-    Path(dir).mkdir(parents=True, exist_ok=True)
-    with open(f'{dir}/{output_file_name}', 'w') as f:
+def save_as_json(directory: str, output_file_name: str, json_blob: dict):
+    make_dir_if_not_exists(directory)
+    with open(f'{directory}/{output_file_name}', 'w') as f:
         json.dump(json_blob, f)
         f.close()
 
 
-def save_as_json_per_item(dir: str, output_file_name: str, items: list):
-    Path(dir).mkdir(parents=True, exist_ok=True)
-    with open(f'{dir}/{output_file_name}', 'w') as f:
+def save_as_json_per_item(directory: str, output_file_name: str, items: list):
+    make_dir_if_not_exists(directory)
+    with open(f'{directory}/{output_file_name}', 'w') as f:
         for d in items:
             json.dump(d, f)
             f.write('\n')
@@ -55,7 +54,6 @@ def get_realised_funds(j: dict):
     return active_funds
 
 
-# same structure
 def items_from_portfolio_page_data(j: dict):
     items = j['result']['data']['allSanityCompanyPage']['nodes']
     return items
@@ -94,12 +92,11 @@ def extract_path(item):
         path = item['path']
         if path.startswith('/'):
             return path
-
     return None
 
 
 def lookup_urls(paths):
-    paths = set(paths)  # don't lookup twice
+    paths = set(paths)  # don't do lookup > 1 per path
     r = {}
     for path in paths:
         full_url = build_page_data_from_path(path)
@@ -120,32 +117,41 @@ def process(page_data_response: dict, url: str, date: datetime.date) -> (dict, l
 # todo - add checks if data is already written. Handle with Override/backfill flag.
 def save(data_source_name: str, items: list, date: datetime.date):
     directory = build_dir_path(data_source_name, date)
-    save_as_json_per_item(dir=directory, output_file_name='output.json', items=items)
+    save_as_json_per_item(directory=directory, output_file_name='output.json', items=items)
 
 
-def save_blob(data_source_name: str, blob: list, date: datetime.date):
+def save_blob(data_source_name: str, blob: dict, date: datetime.date):
     directory = build_dir_path(data_source_name, date)
-    save_as_json(dir=directory, output_file_name='output.json', json_blob=blob)
+    save_as_json(directory=directory, output_file_name='output.json', json_blob=blob)
 
 
 def main(args):
     today = datetime.date.today()
     if 'portfolio' in args or len(args) == 0:
-        portfolio_data = curl_and_get(portfolio_page_data_url)
-
-        enriched_portfolio_items = process(portfolio_data, portfolio_page_data_url, date=today)
-        print_basic_metrics(enriched_portfolio_items, portfolio_page_data_url)
-        save('portfolio', enriched_portfolio_items, today)
+        fetch_and_store_portfolio(today)
 
     if 'divestments' in args or len(args) == 0:
-        divestments_data = curl_and_get(divestments_page_data_url)
-        enriched_divestment_items = process(divestments_data, divestments_page_data_url, date=today)
-        print_basic_metrics(enriched_divestment_items, divestments_page_data_url)
-        save('divestments', enriched_divestment_items, today)
+        fetch_and_store_divestments(today)
 
     # TODO - parse funds
     # if 'funds' in args:
-    #     funds_data = curl_and_get(funds_page_data_url)
+    #     funds_data = ???
+
+
+def fetch_and_store_portfolio(today):
+    portfolio_page_data = curl_and_get(portfolio_page_data_url)  # could be wrapped with some caching of responses
+    save_blob('portfolio_raw', portfolio_page_data, today)  # not used, in real system good for debugging
+    enriched_portfolio_items = process(portfolio_page_data, portfolio_page_data_url, date=today)
+    print_basic_metrics(enriched_portfolio_items, portfolio_page_data_url)
+    save('portfolio', enriched_portfolio_items, today)
+
+
+def fetch_and_store_divestments(today):
+    divestments_page_data = curl_and_get(divestments_page_data_url)
+    save_blob('divestments_raw', divestments_page_data, today)  # not used, in real system good for debugging
+    enriched_divestment_items = process(divestments_page_data, divestments_page_data_url, date=today)
+    print_basic_metrics(enriched_divestment_items, divestments_page_data_url)
+    save('divestments', enriched_divestment_items, today)
 
 
 if __name__ == '__main__':
