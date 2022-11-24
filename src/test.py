@@ -6,7 +6,7 @@ portfolio_element_example = """
 """
 
 
-def test_element_parsing():
+def test_element_parsing_happy_path():
     with open('list_item_example.html') as f:
         example_list_item = f.read()
         list_item = main.soup_from_string(example_list_item)
@@ -14,3 +14,5 @@ def test_element_parsing():
         assert parsed_item['name'] == 'Guardian Shanghai Hygiene Service Ltd'
         assert 'parse_error' not in parsed_item
         assert 'raw_html' in parsed_item
+
+# Todo add tests

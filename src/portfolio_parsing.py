@@ -11,7 +11,7 @@ def value_by_text_key(li_element: BeautifulSoup, text: str):
 
 def parse_portfolio_list_element(list_element: BeautifulSoup):
     r = {
-            'raw_html': str(list_element)
+            # 'raw_html': str(list_element)
     }
     try:
         name = list_element.find('span', class_='inline-block')
