@@ -1,11 +1,15 @@
 import datetime
 import json
+import time
 from pathlib import Path
 
 import requests
 
-divestments_page_data_url = 'https://eqtgroup.com/page-data/current-portfolio/divestments/page-data.json'
+EQT_DOMAIN = 'https://eqtgroup.com'
+EQT_PAGE_DATA = 'https://eqtgroup.com/page-data'
+PAGE_DATA_JSON = 'page-data.json'
 
+divestments_page_data_url = 'https://eqtgroup.com/page-data/current-portfolio/divestments/page-data.json'
 portfolio_page_data_url = 'https://eqtgroup.com/page-data/current-portfolio/page-data.json'
 
 
@@ -51,15 +55,23 @@ def items_from_page_data(j: dict):
     return items
 
 
-def enrich(items: list, url: str, date_str: str):
+def items_from_company_page(j: dict):
+    items = j['result']['data']['sanityCompanyPage']
+    return items
+
+
+def enrich(items: list, source_url: str, blob_lookup: dict, date_str: str):
     for item in items:
-        item['source_url'] = url
+        item['source_url'] = source_url
         item['date'] = date_str
-    # don't have to return but easier to reason about
+        if 'path' in item and item['path'] in blob_lookup:
+            item['company_details'] = blob_lookup[item['path']]
     return items
 
 
 def curl_and_get(url: str) -> dict:
+    time.sleep(0.05)  # hide "client details
+    print(f"getting contents of {url}")  # debug logging
     r = requests.get(url)
     if r.status_code == 200:
         return r.json()
@@ -67,12 +79,38 @@ def curl_and_get(url: str) -> dict:
         raise Exception(f'Not 200: {str(r)}')
 
 
+def build_page_data_from_path(path: str) -> str:
+    return f'{EQT_PAGE_DATA}{path}/{PAGE_DATA_JSON}'
+
+
+def extract_path(item):
+    if 'path' in item and item['path']:
+        path = item['path']
+        if path.startswith('/'):
+            return path
+
+    return None
+
+
+def lookup_urls(paths):
+    paths = set(paths)
+    r = {}
+    for path in paths:
+        full_url = build_page_data_from_path(path)
+        blob = curl_and_get(full_url)
+        r[path] = items_from_company_page(blob)
+    return r
+
+
 def process(page_data_response: dict, url: str, date: datetime.date) -> (dict, list):
     items = items_from_page_data(page_data_response)
-    enriched_portfolio_items = enrich(items=items, url=url, date_str=to_string(date))
-    return enriched_portfolio_items
+    paths = list(filter(lambda p: p is not None, map(lambda i: extract_path(i), items)))
+    blob_by_path = lookup_urls(paths)
+    enriched_items = enrich(items=items, source_url=url, blob_lookup=blob_by_path, date_str=to_string(date))
+    return enriched_items
 
 
+# todo - add checks if data is already written. Handle with Override/backfill flag.
 def save(data_source_name: str, items: list, date: datetime.date):
     directory = build_dir_path(data_source_name, date)
     save_to_json_by_item(dir=directory, output_file_name='output.json', items=items)
@@ -93,6 +131,4 @@ def main_curl():
 
 
 if __name__ == '__main__':
-    # args = sys.argv[1:]
-    # main(args)
     main_curl()
