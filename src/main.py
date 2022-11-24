@@ -1,75 +1,28 @@
 import datetime
 import json
-import os.path
-import requests
 from pathlib import Path
 
-from bs4 import BeautifulSoup
-from selenium import webdriver
-from selenium.webdriver.chrome.options import Options
-from selenium.webdriver.chrome.webdriver import WebDriver
-
-from portfolio_parsing import parse_portfolio
+import requests
 
 divestments_page_data_url = 'https://eqtgroup.com/page-data/current-portfolio/divestments/page-data.json'
 
 portfolio_page_data_url = 'https://eqtgroup.com/page-data/current-portfolio/page-data.json'
 
-DIVESTMENTS_HTML_FILE_NAME = 'current_portfolio_divestments.html'
 
-PORTFOLIO_HTML_FILE_NAME = 'current_portfolio.html'
-
-PORTFOLIO_FUNDS_URL = 'https://eqtgroup.com/current-portfolio/funds'
-
-PORTFOLIO_URL = 'https://eqtgroup.com/current-portfolio'
-DIVESTMENTS_URL = 'https://eqtgroup.com/current-portfolio/divestments'
-
-
-def get_chrome_driver() -> WebDriver:
-    options = Options()
-    options.headless = True
-    options.add_argument("--window-size=1920,1200")
-
-    return webdriver.Chrome(options=options, executable_path='chromedriver')
-
-
-def get_page_source(web_driver: WebDriver, url: str, file_name=None) -> str:
-    if file_name and os.path.exists(file_name):
-        with open(file_name, 'r') as f:
-            r = f.read()
-            f.close()
-            return r
-    web_driver.get(url)
-    page_source = web_driver.page_source
-    with open(file_name, 'w') as f:
-        f.write(page_source)
+def save_to_json(dir: str, output_file_name: str, blob: dict):
+    Path(dir).mkdir(parents=True, exist_ok=True)
+    with open(f'{dir}/{output_file_name}', 'w') as f:
+        json.dump(blob, f)
         f.close()
-    return page_source
 
 
-def soup_from_string(page_source: str) -> BeautifulSoup:
-    return BeautifulSoup(page_source, "html.parser")
-
-
-def sanity_check(item: dict):
-    return 'name' in item and 'fund' in item
-
-
-def check_and_print_metrics(items: list, url: str):
-    print(f'URL: {url}')
-    errors = filter(lambda e: 'parse_error' in e, items)
-    print(f'# of unparsable lines: {len(list(errors))}')
-    valid_elems = list(filter(lambda e: 'parse_error' not in e and sanity_check(e), items))
-    print(f'# of parsed lines: {len(valid_elems)}')
-
-
-def save_to_json(dir: str, output_file_name: str, items: list):
+def save_to_json_by_item(dir: str, output_file_name: str, items: list):
     Path(dir).mkdir(parents=True, exist_ok=True)
     with open(f'{dir}/{output_file_name}', 'w') as f:
         for d in items:
             json.dump(d, f)
             f.write('\n')
-    f.close()
+        f.close()
 
 
 def build_dir_path(data_name, date: datetime.date):
@@ -122,7 +75,7 @@ def process(page_data_response: dict, url: str, date: datetime.date) -> (dict, l
 
 def save(data_source_name: str, items: list, date: datetime.date):
     directory = build_dir_path(data_source_name, date)
-    save_to_json(dir=directory, output_file_name='output.json', items=items)
+    save_to_json_by_item(dir=directory, output_file_name='output.json', items=items)
 
 
 def main_curl():
@@ -137,37 +90,6 @@ def main_curl():
     enriched_divestment_items = process(divestments_data, divestments_page_data_url, date=today)
     print_basic_metrics(enriched_divestment_items, divestments_page_data_url)
     save('divestments', enriched_divestment_items, today)
-
-
-def main(args: list):
-    output = []
-
-    driver = get_chrome_driver()
-    driver.get('https://eqtgroup.com/page-data/current-portfolio/page-data.json')
-
-    if 'portfolio' in args:
-        driver = get_chrome_driver()
-        portfolio_source = get_page_source(driver, PORTFOLIO_URL, PORTFOLIO_HTML_FILE_NAME)
-        driver.close()
-        portfolio = soup_from_string(portfolio_source)
-
-        portfolio_items = parse_portfolio(portfolio)
-        output = output + portfolio_items
-        check_and_print_metrics(portfolio_items, PORTFOLIO_URL)
-
-    if 'divestments' in args:
-        driver = get_chrome_driver()
-        divestments_source = get_page_source(driver, DIVESTMENTS_URL, DIVESTMENTS_HTML_FILE_NAME)
-        driver.close()
-        divestments = soup_from_string(divestments_source)
-
-        divestment_items = parse_portfolio(divestments)
-        output = output + divestment_items
-        check_and_print_metrics(divestment_items, DIVESTMENTS_URL)
-
-    save_to_json('output/output_portfolio.json', output)
-    # todo enrich with fund and details data
-    # input/output by time/date
 
 
 if __name__ == '__main__':
