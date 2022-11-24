@@ -1,17 +1,71 @@
-# tbd
+# Portfolio enrichment
 
-## figure out schemas
+Download 
+Gathers data from EQS portfolio (+ divestments)
+
+
+## Prerequisites
+* python 3
+* google account (and access to motherbrain-external-test bucket)
+
+### Download proprietary data
 ``` shell
+mkdir reference-data
 gsutil cp gs://motherbrain-external-test/interview-test-org.json.gz  reference-data/
 gsutil cp gs://motherbrain-external-test/interview-test-funding.json.gz reference-data/
 ```
 
-
+### Run the process
 ```shell
-python src/combine_sources.py --divestments output/divestments/2022-11-24/output.json --portfolio output/portfolio/2022-11-24/output.json  --organisation reference-data/interview-test-org.json.gz --funding reference-data/interview-test-funding.json.gz 
+pip install -r requirements.txt
+python 
+dt=$(date "+%Y-%m-%d")
+
+python src/fetch_portfolio_data.py
+python src/combine_sources.py --divestments output/divestments/$dt/output.json --portfolio output/portfolio/$dt/output.json  --organisation reference-data/interview-test-org.json.gz --funding reference-data/interview-test-funding.json.gz 
+
 ```
 
-interview-test-org.json
+
+## Schemas
+
+### "enriched" output
+
+```json
+[
+  "_id",
+  "city",
+  "company_details",
+  "company_name",
+  "company_uuid",
+  "country",
+  "country_code",
+  "date",
+  "description",
+  "employee_count",
+  "entryDate",
+  "exitDate",
+  "founded_on",
+  "fund",
+  "funding_rounds",
+  "funding_total_usd",
+  "fundings",
+  "homepage_url",
+  "last_funding_on",
+  "normalized_company_name",
+  "path",
+  "promotedSdg",
+  "sdg",
+  "sector",
+  "short_description",
+  "source_url",
+  "title",
+  "topic"
+]
+```
+
+## Org data
+
 ```json
 {
   "$schema": "http://json-schema.org/schema#",
@@ -69,7 +123,8 @@ interview-test-org.json
 
 ```
 
-funding
+## funding data
+
 ```json
 {
   "$schema": "http://json-schema.org/schema#",

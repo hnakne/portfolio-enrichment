@@ -1,4 +1,3 @@
-selenium==4.6.0
-beautifulsoup4
 genson
 pytest
+pandas

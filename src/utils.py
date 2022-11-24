@@ -2,7 +2,7 @@ import datetime
 from pathlib import Path
 
 
-def build_dir_path(data_name, date: datetime.date):
+def build_dir_path(data_name, date: str):
     return f'output/{data_name}/{date}'
 
 
