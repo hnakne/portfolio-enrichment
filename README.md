@@ -18,7 +18,6 @@ gsutil cp gs://motherbrain-external-test/interview-test-funding.json.gz referenc
 ### Run the process
 ```shell
 pip install -r requirements.txt
-python 
 dt=$(date "+%Y-%m-%d")
 
 python src/fetch_portfolio_data.py

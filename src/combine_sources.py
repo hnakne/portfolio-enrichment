@@ -98,9 +98,9 @@ def main(parsed_args):
 
     funding = pd.read_json(parsed_args.funding, lines=True, compression='gzip')
     output = process(portfolio=portfolio, divestments=divestments, organisation=organisation, funding=funding)
-    print(output.head())
     output_path = utils.build_dir_path('enriched_companies', date)
     save_enriched_companies(output, directory=output_path)
+    print(f'Result available at: {output_path}')
     # TODO print some metrics
 
 
