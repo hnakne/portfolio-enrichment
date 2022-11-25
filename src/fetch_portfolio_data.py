@@ -5,7 +5,7 @@ import time
 
 import requests
 
-from src.utils import build_dir_path, make_dir_if_not_exists
+from utils import build_dir_path, make_dir_if_not_exists
 
 EQT_PAGE_DATA = 'https://eqtgroup.com/page-data'
 PAGE_DATA_JSON = 'page-data.json'

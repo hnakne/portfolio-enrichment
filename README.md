@@ -1,14 +1,14 @@
 # Portfolio enrichment
 
-Download 
-Gathers data from EQS portfolio (+ divestments)
-
+Follow instructions below to gather data from EQS portfolio (+ divestments) and enrich it with "proprietary" data
 
 ## Prerequisites
+
 * python 3
 * google account (and access to motherbrain-external-test bucket)
 
 ### Download proprietary data
+
 ``` shell
 mkdir reference-data
 gsutil cp gs://motherbrain-external-test/interview-test-org.json.gz  reference-data/
@@ -16,15 +16,15 @@ gsutil cp gs://motherbrain-external-test/interview-test-funding.json.gz referenc
 ```
 
 ### Run the process
+
 ```shell
 pip install -r requirements.txt
 dt=$(date "+%Y-%m-%d")
 
 python src/fetch_portfolio_data.py
-python src/combine_sources.py --divestments output/divestments/$dt/output.json --portfolio output/portfolio/$dt/output.json  --organisation reference-data/interview-test-org.json.gz --funding reference-data/interview-test-funding.json.gz 
+python src/combine_sources.py --divestments output/divestments/$dt/output.json --portfolio output/portfolio/$dt/output.json --organisation reference-data/interview-test-org.json.gz --funding reference-data/interview-test-funding.json.gz --date $dt
 
 ```
-
 
 ## Schemas
 
