@@ -1,3 +1,4 @@
 genson
 pytest
 pandas
+requests
